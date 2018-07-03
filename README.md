@@ -12,9 +12,7 @@ REQUEST_TYPE
 <empty line>
 BODY
 ```
-
 BODY可省略 \
-
 响应：
 ```
 STATUS
@@ -23,12 +21,10 @@ BODY
 ```
 STATUS为OK时，BODY为对应响应。 \ 
 STATUS为FAIL时，BODY为失败原因。 \
-
 ## 登录
-客户端请求：
-FROM_ID=0，TO_ID=0。
-REQUEST_TYPE=LOGIN
-
+客户端请求：\
+FROM_ID=0，TO_ID=0。 \
+REQUEST_TYPE=LOGIN \
 服务端响应： \
 一个随机ID \
 
@@ -36,7 +32,6 @@ REQUEST_TYPE=LOGIN
 客户端请求： \
 FROM_ID=FROM_ID，TO_ID=TO_ID。 \
 REQUEST_TYPE=SEND \
-
 当私聊时，TO_ID是对方ID。 \
 当群聊时，TO_ID是群组ID。 \
 
@@ -44,7 +39,6 @@ REQUEST_TYPE=SEND \
 客户端请求： \
 FROM_ID=FROM_ID，TO_ID=0 \
 REQUEST_TYPE=CREATE_GROUP \
-
 响应： \
 一个随机群组ID，并会将FROM_ID自动加入群。 \
 
