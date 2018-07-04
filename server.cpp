@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <stdio.h>
 #include <string.h>
@@ -122,6 +123,17 @@ int main(int argc, char **argv)
         else if(strcmp(request_type, "ENTER_GROUP") == 0)
         {
             groups[to_id].push_back(from_id);
+        }
+        else if(strcmp(request_type, "TRANS_FILE") == 0)
+        {
+            char ip[64];
+            inet_ntop(AF_INET, &id_to_addr[to_id].sin_addr, ip, 64);
+
+            sprintf(rspmsg, "%d %d\n%s\n", 0, to_id, "RECV_FILE");
+            sendto(sockfd, rspmsg, strlen(rspmsg), 0, (struct sockaddr*)&id_to_addr[to_id], sizeof(cliaddr));
+            sleep(1);
+            sprintf(rspmsg, "%d %d\n%s\n%s", 0, from_id, "SEND_FILE", ip);
+            sendto(sockfd, rspmsg, strlen(rspmsg), 0, (struct sockaddr*)&id_to_addr[from_id], sizeof(cliaddr));
         }
     }
 }

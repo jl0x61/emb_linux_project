@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -8,7 +9,9 @@
 #include <arpa/inet.h>
 #define MAXMSG 1024
 #define SERV_PORT 8023
+#define FILE_RECV_PORT 3208
 #define ID_SIZE 7
+#define MAXLINE 1024
 // start a thread to send msg
 // main thread send msg 
 //
@@ -23,6 +26,85 @@ int current_group;
 int my_id = 0;
 int sockfd;
 struct sockaddr_in servaddr;
+char next_send_filename[128];
+
+void debug_addr(struct sockaddr_in addr)
+{
+    char ip[64];
+    inet_ntop(AF_INET, &addr.sin_addr, ip, 64);
+    int port = htons(addr.sin_port);
+    printf("ip: %s port: %d\n", ip, port);
+}
+
+void *file_recv(void *fk)
+{
+    struct sockaddr_in recvaddr, sendaddr;
+    char buf[MAXLINE];
+    int recvfd = socket(AF_INET, SOCK_STREAM, 0);
+    bzero(&recvaddr, sizeof(recvaddr));
+    recvaddr.sin_family = AF_INET;
+    recvaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    recvaddr.sin_port = htons(FILE_RECV_PORT);
+    int on = 1;
+    setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    bind(recvfd, (struct sockaddr*)&recvaddr, sizeof(recvaddr));
+    perror("bind");
+    listen(recvfd, 10);
+    socklen_t send_addr_len = sizeof(sendaddr);
+    int sendfd = accept(recvfd, (struct sockaddr*)&sendaddr, &send_addr_len);
+    FILE *fp=fopen("recv.file", "wb");
+    bzero(buf, sizeof(buf));
+    int recv_len;
+    while(recv_len = recv(sendfd, buf, MAXLINE, 0))
+    {
+        if(recv_len<0)
+            break;
+        int write_len = fwrite(buf, sizeof(char), recv_len, fp);
+        if(write_len < recv_len)
+        {
+            printf("Write failed\n");
+            break;
+        }
+        bzero(buf, MAXLINE);
+    }
+    printf("Recv sucess\n");
+    fclose(fp);
+    close(recvfd);
+    close(sendfd);
+}
+
+
+void *file_send(void *arg)
+{
+    char *info = (char*)arg;
+    char ip[128], filename[128];
+    sscanf(info, "%s %s", ip, filename);
+    struct sockaddr_in recvaddr;
+    bzero(&recvaddr, sizeof(recvaddr));
+    recvaddr.sin_family = AF_INET;
+    recvaddr.sin_port = htons(FILE_RECV_PORT);
+    inet_pton(AF_INET, ip, &recvaddr.sin_addr);
+    int recvfd = socket(AF_INET, SOCK_STREAM, 0);
+    connect(recvfd, (struct sockaddr*)&recvaddr, sizeof(recvaddr));
+    char buf[MAXLINE];
+    bzero(buf, MAXLINE);
+    FILE *fp = fopen(filename, "rb");
+    int read_len;
+    while((read_len = fread(buf, sizeof(char), MAXLINE, fp)) > 0)
+    {
+        int send_len = send(recvfd,buf, read_len, 0);
+        perror("send");
+        if(send_len < 0)
+        {
+            perror("send file failed\n");
+            break;
+        }
+        bzero(buf, MAXLINE);
+    }
+    fclose(fp);
+    close(recvfd);
+    printf("send finish\n");
+}
 
 void parse_input(char *msg, char *type, char *arg)
 {
@@ -103,6 +185,16 @@ void *send_to_server(void *fk)
             sprintf(sendmsg, "%d %d\n%s\n", my_id, group_id, "ENTER_GROUP");
             sendto(sockfd, sendmsg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
         }
+        else if(strcmp(type, "sendfile") == 0)
+        {
+            int to_id;
+            char filename[128];
+            sscanf(arg, "%d %s", &to_id, filename);
+            strcpy(next_send_filename, filename);
+            sprintf(sendmsg, "%d %d\n%s\n", my_id, to_id, "TRANS_FILE");
+            sendto(sockfd, sendmsg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+        }
+    
     }
 }
 int main(int argc, char **argv)
@@ -135,6 +227,7 @@ int main(int argc, char **argv)
     char type[64];
     char body[MAXMSG];
     char output[MAXMSG];
+    char file_send_info[MAXMSG];
     for(;;)
     {
         len = sizeof(servaddr);
@@ -153,6 +246,20 @@ int main(int argc, char **argv)
         {
             printf("my id is %d\n", to_id);
             my_id = to_id;
+        }
+        else if(strcmp(type, "SEND_FILE") == 0)
+        {
+            char ip[128];
+            int port;
+            sscanf(body, "%s", ip);
+            sprintf(file_send_info, "%s %s", ip, next_send_filename);
+            pthread_t tid;
+            pthread_create(&tid, NULL, file_send, (void*)file_send_info);
+        }
+        else if(strcmp(type, "RECV_FILE") == 0)
+        {
+            pthread_t tid;
+            pthread_create(&tid, NULL, file_recv, NULL);
         }
     }
 }
