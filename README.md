@@ -10,9 +10,7 @@ FROM_ID TO_ID
 REQUEST_TYPE
 BODY
 ```
-BODY可省略 \
-STATUS为OK时，BODY为对应响应。 \
-STATUS为FAIL时，BODY为失败原因。 
+BODY可省略 
 ## 登录
 客户端请求：\
 FROM_ID=0，TO_ID=0。 \
@@ -26,7 +24,7 @@ REQUEST_TYPE=MEMBER_ID
 FROM_ID=FROM_ID，TO_ID=TO_ID。 \
 REQUEST_TYPE=SEND \
 当私聊时，TO_ID是对方ID。 \
-当群聊时，TO_ID是群组ID。 \ 
+当群聊时，TO_ID是群组ID。 \ \
 客户端会给所有需要接收到消息的客户响应： \
 FROM_ID=发送方ID，TO_ID=TO_ID。 \
 REQUEST_TYPE=SEND。 
