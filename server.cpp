@@ -96,7 +96,6 @@ int main(int argc, char **argv)
                 groups[id].push_back(id);
                 id_to_addr[id] = cliaddr;
                 sprintf(rspmsg, "%d %d\n%s\n", 0, id, "MEMBER_ID");
-                debug_addr(cliaddr);
                 sendto(sockfd, rspmsg, strlen(rspmsg), 0, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
             }
         }
