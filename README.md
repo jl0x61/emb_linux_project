@@ -42,3 +42,21 @@ REQUEST_TYPE=GROUP_ID
 FROM_ID=FROM_ID，TO_ID=GROUP_ID \
 REQUEST_TYPE=ENTER_GROUP 
 
+## 文件传输
+客户端请求服务端： \
+FROM_ID=FROM_ID，TO_ID=TO_ID \
+REQUEST_TYPE=TRANS_FILE \
+
+服务端先给接收端发送请求，让其开一个线程准备接收文件： \
+FROM_ID=0，TO_ID=接收方ID \
+REQUEST_TYPE=RECV_FILE \
+
+服务端响应TO_ID的ADDR： \
+FROM_ID=0，TO_ID=发送请求的服务端ID \
+REQUEST_TYPE=SEND_FILE \
+BODY="<ip_address>" \
+
+然后发送方新建一个线程向对应的ip发送文件。 \
+接收文件的端口是3208，每个客户端启动时自动创建一个线程进行接收。 \
+
+发送方接着也打开一个ip和端口，发送文件。
