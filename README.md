@@ -19,25 +19,24 @@ FROM_ID=0，TO_ID=0。 \
 REQUEST_TYPE=LOGIN \
 服务端响应： \
 FROM_ID=0，TO_ID=分配给客户端的随机ID。 \
-REQUEST_TYPE=MEMBER_ID \
+REQUEST_TYPE=MEMBER_ID 
 
 ## 聊天
 客户端请求： \
 FROM_ID=FROM_ID，TO_ID=TO_ID。 \
 REQUEST_TYPE=SEND \
 当私聊时，TO_ID是对方ID。 \
-当群聊时，TO_ID是群组ID。 
-
-客户端会给所有需要接收到消息的客户响应：
-FROM_ID=发送方ID，TO_ID=TO_ID。
-REQUEST_TYPE=SEND。
+当群聊时，TO_ID是群组ID。 \ 
+客户端会给所有需要接收到消息的客户响应： \
+FROM_ID=发送方ID，TO_ID=TO_ID。 \
+REQUEST_TYPE=SEND。 
 
 ## 创建群组
 客户端请求： \
 FROM_ID=FROM_ID，TO_ID=0 \
 REQUEST_TYPE=CREATE_GROUP \
 响应： \
-FROM_ID=分配的随机群组ID，TO_ID=请求客户的ID
+FROM_ID=分配的随机群组ID，TO_ID=请求客户的ID \
 REQUEST_TYPE=GROUP_ID 
 
 ## 加入群组
