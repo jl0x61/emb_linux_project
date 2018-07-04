@@ -197,6 +197,18 @@ void *send_to_server(void *fk)
     
     }
 }
+
+void* send_heartbeat(void *fk)
+{
+    char msg[1024];
+    sprintf(msg, "%d %d\n%s\n", 0, 0, "HEART_BEAT");
+    while(1)
+    {
+        sendto(sockfd, msg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+        sleep(10);
+    }
+}
+
 int main(int argc, char **argv)
 {
     if(argc != 3)
