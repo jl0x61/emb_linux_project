@@ -223,6 +223,7 @@ int main(int argc, char **argv)
     sscanf(argv[2], "%d", &listen_port);
     pthread_t tid;
     pthread_create(&tid, NULL, send_to_server, NULL); // 开一个线程用于将用户输入发送给服务端
+    pthread_create(&tid, NULL, send_heartbeat, NULL);
     sockfd = socket(AF_INET, SOCK_DGRAM, 0); // 新建一个套接字
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
