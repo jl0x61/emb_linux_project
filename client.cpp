@@ -36,26 +36,27 @@ void debug_addr(struct sockaddr_in addr)
     printf("ip: %s port: %d\n", ip, port);
 }
 
+// 用TCP收文件
 void *file_recv(void *fk)
 {
     struct sockaddr_in recvaddr, sendaddr;
     char buf[MAXLINE];
-    int recvfd = socket(AF_INET, SOCK_STREAM, 0);
+    int recvfd = socket(AF_INET, SOCK_STREAM, 0); //收文件套接字
     bzero(&recvaddr, sizeof(recvaddr));
     recvaddr.sin_family = AF_INET;
     recvaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     recvaddr.sin_port = htons(FILE_RECV_PORT);
     int on = 1;
-    setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+    setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)); //重用TIME_WAIT的端口
     bind(recvfd, (struct sockaddr*)&recvaddr, sizeof(recvaddr));
     perror("bind");
     listen(recvfd, 10);
     socklen_t send_addr_len = sizeof(sendaddr);
-    int sendfd = accept(recvfd, (struct sockaddr*)&sendaddr, &send_addr_len);
+    int sendfd = accept(recvfd, (struct sockaddr*)&sendaddr, &send_addr_len); //监听请求
     FILE *fp=fopen("recv.file", "wb");
     bzero(buf, sizeof(buf));
     int recv_len;
-    while(recv_len = recv(sendfd, buf, MAXLINE, 0))
+    while(recv_len = recv(sendfd, buf, MAXLINE, 0)) //传输文件
     {
         if(recv_len<0)
             break;
@@ -74,6 +75,7 @@ void *file_recv(void *fk)
 }
 
 
+// 用TCP发文件
 void *file_send(void *arg)
 {
     char *info = (char*)arg;
@@ -84,13 +86,13 @@ void *file_send(void *arg)
     recvaddr.sin_family = AF_INET;
     recvaddr.sin_port = htons(FILE_RECV_PORT);
     inet_pton(AF_INET, ip, &recvaddr.sin_addr);
-    int recvfd = socket(AF_INET, SOCK_STREAM, 0);
-    connect(recvfd, (struct sockaddr*)&recvaddr, sizeof(recvaddr));
+    int recvfd = socket(AF_INET, SOCK_STREAM, 0);  // 发送文件的套接字
+    connect(recvfd, (struct sockaddr*)&recvaddr, sizeof(recvaddr)); // 连接
     char buf[MAXLINE];
     bzero(buf, MAXLINE);
     FILE *fp = fopen(filename, "rb");
     int read_len;
-    while((read_len = fread(buf, sizeof(char), MAXLINE, fp)) > 0)
+    while((read_len = fread(buf, sizeof(char), MAXLINE, fp)) > 0) // 文件传输
     {
         int send_len = send(recvfd,buf, read_len, 0);
         perror("send");
@@ -145,7 +147,7 @@ bool parse_request(char *msg, int &from_id, int &to_id, char *request_type, char
     return true;                                    
 }
 
-
+// 接收标准输入处理后发给服务端
 void *send_to_server(void *fk)
 {
     char msg[MAXMSG];
@@ -154,13 +156,13 @@ void *send_to_server(void *fk)
     char arg[MAXMSG];
     while(fgets(msg, MAXMSG, stdin))
     {
-        parse_input(msg, type, arg);
-        if(strcmp(type, "send") == 0)
+        parse_input(msg, type, arg); //处理输入
+        if(strcmp(type, "send") == 0) //发送消息
         {
             sprintf(sendmsg, "%d %d\n%s\n%s", my_id, current_group, "SEND", arg);
             sendto(sockfd, sendmsg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
         }
-        else if(strcmp(type, "switch") == 0)
+        else if(strcmp(type, "switch") == 0) //切换聊天窗口
         {
             int group_id = 0;
             sscanf(arg, "%d", &group_id);
@@ -168,24 +170,24 @@ void *send_to_server(void *fk)
             current_group = group_id;
             printf("cuurent_group: %d\n", group_id);
         }   
-        else if(strcmp(type, "login") == 0)
+        else if(strcmp(type, "login") == 0) //登录，让服务端分配一个用户ID
         {
             sprintf(sendmsg, "%d %d\n%s\n", 0, 0, "LOGIN");
             sendto(sockfd, sendmsg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
         }
-        else if(strcmp(type, "create_group") == 0)
+        else if(strcmp(type, "create_group") == 0) //创建群组
         {
             sprintf(sendmsg, "%d %d\n%s\n", my_id, 0, "CREATE_GROUP");
             sendto(sockfd, sendmsg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
         }
-        else if(strcmp(type, "enter_group") == 0)
+        else if(strcmp(type, "enter_group") == 0) //加入群组
         {
             int group_id;
             sscanf(arg, "%d", &group_id);
             sprintf(sendmsg, "%d %d\n%s\n", my_id, group_id, "ENTER_GROUP");
             sendto(sockfd, sendmsg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
         }
-        else if(strcmp(type, "sendfile") == 0)
+        else if(strcmp(type, "sendfile") == 0) //发送文件
         {
             int to_id;
             char filename[128];
@@ -198,6 +200,7 @@ void *send_to_server(void *fk)
     }
 }
 
+// 发心跳包，维持NAT的外部端口不被重新分配
 void* send_heartbeat(void *fk)
 {
     char msg[1024];
@@ -219,19 +222,19 @@ int main(int argc, char **argv)
     int listen_port;
     sscanf(argv[2], "%d", &listen_port);
     pthread_t tid;
-    pthread_create(&tid, NULL, send_to_server, NULL);
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    pthread_create(&tid, NULL, send_to_server, NULL); // 开一个线程用于将用户输入发送给服务端
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0); // 新建一个套接字
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(SERV_PORT);
-    inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
+    inet_pton(AF_INET, argv[1], &servaddr.sin_addr); // 服务端的地址
     
     struct sockaddr_in cliaddr; 
     bzero(&cliaddr, sizeof(cliaddr));
     cliaddr.sin_family = AF_INET;
     cliaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    cliaddr.sin_port = htons(listen_port);
-    bind(sockfd, (struct sockaddr*)&cliaddr, sizeof(cliaddr));
+    cliaddr.sin_port = htons(listen_port); //客户端的地址
+    bind(sockfd, (struct sockaddr*)&cliaddr, sizeof(cliaddr)); //与套接字绑定
     
     char msg[MAXMSG];
     socklen_t len;
@@ -246,32 +249,32 @@ int main(int argc, char **argv)
         int n = recvfrom(sockfd, msg, MAXMSG, 0, NULL, NULL);
         msg[n] = '\0';
         parse_request(msg, from_id, to_id, type, body);
-        if(strcmp(type, "SEND") == 0)
+        if(strcmp(type, "SEND") == 0) //聊天消息
         {
             printf("%d: %s\n", from_id, body);
         }
-        else if(strcmp(type, "GROUP_ID") == 0)
+        else if(strcmp(type, "GROUP_ID") == 0) //新建的群组ID
         {
             printf("created group_id is %d\n", from_id);
         }
-        else if(strcmp(type, "MEMBER_ID") == 0)
+        else if(strcmp(type, "MEMBER_ID") == 0) // 新建的用户ID
         {
             printf("my id is %d\n", to_id);
             my_id = to_id;
         }
-        else if(strcmp(type, "SEND_FILE") == 0)
+        else if(strcmp(type, "SEND_FILE") == 0) //文件发送方
         {
             char ip[128];
             int port;
             sscanf(body, "%s", ip);
             sprintf(file_send_info, "%s %s", ip, next_send_filename);
             pthread_t tid;
-            pthread_create(&tid, NULL, file_send, (void*)file_send_info);
+            pthread_create(&tid, NULL, file_send, (void*)file_send_info); //开一个线程发文件
         }
         else if(strcmp(type, "RECV_FILE") == 0)
         {
             pthread_t tid;
-            pthread_create(&tid, NULL, file_recv, NULL);
+            pthread_create(&tid, NULL, file_recv, NULL); //开一个线程收文件
         }
     }
 }
