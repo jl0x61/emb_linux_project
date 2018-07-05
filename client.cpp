@@ -207,7 +207,7 @@ void* send_heartbeat(void *fk)
     sprintf(msg, "%d %d\n%s\n", 0, 0, "HEART_BEAT");
     while(1)
     {
-        sendto(sockfd, msg, sizeof(sendmsg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
+        sendto(sockfd, msg, sizeof(msg), 0, (struct sockaddr*)&servaddr, sizeof(servaddr));
         sleep(10);
     }
 }
